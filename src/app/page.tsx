@@ -27,7 +27,7 @@ export default function Home() {
   const [researchResults, setResearchResults] = useState<ResearchSource[]>([]);
   const [researching, setResearching] = useState(false);
   const [savingSource, setSavingSource] = useState<string | null>(null);
-  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);
+  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);\n  const [generatingScript, setGeneratingScript] = useState(false);\n  const [editorialChecks, setEditorialChecks] = useState<string[]>([]);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
@@ -168,7 +168,7 @@ export default function Home() {
       url: source.url,
       title: source.title,
       publisher: source.publisher,
-      notes: "Discovered via Google News. Open and assess the original article; independently verify every factual claim before using it."
+      notes: "Google News discovery snippet (not the full article): " + source.summary.replace(/<[^>]*>/g, "").slice(0, 1200) + " Open and assess the original article; independently verify every factual claim before using it."
     });
     if (error) setMessage(error.message);
     else {
@@ -176,6 +176,24 @@ export default function Home() {
       setMessage("Source saved to this draft. Read it and verify its claims before use.");
     }
     setSavingSource(null);
+  }
+
+  async function generateScript() {
+    if (!selectedProject) return;
+    setGeneratingScript(true); setMessage(""); setEditorialChecks([]);
+    try {
+      const response = await fetch("/api/generate-script", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: selectedProject.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Script generation failed.");
+      setSelectedProject(current => current ? { ...current, title: data.title, hook: data.hook, script: data.script } : current);
+      setEditorialChecks(data.editorialChecks || []);
+      setMessage("AI script draft created. Review every claim and source before saving or approving.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Script generation failed.");
+    } finally { setGeneratingScript(false); }
   }
 
   async function saveScript() {
@@ -223,7 +241,11 @@ export default function Home() {
       <label>Video title<input value={selectedProject.title || ""} onChange={e=>setSelectedProject({...selectedProject,title:e.target.value})}/></label>
       <label>Opening hook<input value={selectedProject.hook || ""} onChange={e=>setSelectedProject({...selectedProject,hook:e.target.value})}/></label>
       <label>Script draft<textarea rows={12} value={selectedProject.script || ""} onChange={e=>setSelectedProject({...selectedProject,script:e.target.value})}/></label>
-      <p className="editor-warning"><ShieldCheck size={15}/> This is a structure draft, not verified reporting. Add reliable sources and check every factual claim before approval.</p>
+      <div className="research-tools"><div><b>Research this topic</b><p>Search recent coverage. Headlines and snippets are leads, not proof.</p></div><button className="refresh-button" onClick={findResearch} disabled={researching}>{researching ? "Searching…" : "Search sources"}</button></div>
+      {researchResults.length > 0 && <div className="research-results">{researchResults.map(source=><article className="research-result" key={source.url}><div><b>{source.title}</b><small>{source.publisher}{source.publishedAt ? " · " + new Date(source.publishedAt).toLocaleDateString() : ""}</small><p>{source.summary.replace(/<[^>]*>/g, "").slice(0,220)}</p><a href={source.url} target="_blank" rel="noreferrer">Open original article ↗</a></div><button className="trend-link" disabled={savingSource === source.url || savedSourceUrls.includes(source.url)} onClick={()=>void saveResearchSource(source)}>{savedSourceUrls.includes(source.url) ? "Saved" : savingSource === source.url ? "Saving…" : "Add source"}</button></article>)}</div>}
+      <button className="primary-button" disabled={generatingScript} onClick={generateScript}>{generatingScript ? "Generating…" : "Generate script with AI"}</button>
+      {editorialChecks.length > 0 && <div className="editorial-checks"><b>Editorial checks before approval</b><ul>{editorialChecks.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}
+      <p className="editor-warning"><ShieldCheck size={15}/> AI output is an unverified draft based only on saved source notes. Open the original articles, verify each claim and make edits before approval.</p>
       <button className="primary-button" disabled={savingScript} onClick={saveScript}>{savingScript ? "Saving…" : "Save script draft"}</button>
     </section></div>}
 
