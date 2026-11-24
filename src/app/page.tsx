@@ -5,7 +5,8 @@ import { Activity, ArrowRight, Clock3, Film, LogOut, RefreshCw, ShieldCheck, Spa
 import { createClient } from "@/lib/supabase";
 
 type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };
-type Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };\ntype ResearchSource = { title: string; url: string; publisher: string; publishedAt: string | null; summary: string };
+type Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };
+type ResearchSource = { title: string; url: string; publisher: string; publishedAt: string | null; summary: string };
 
 export default function Home() {
   const supabase = createClient();
