@@ -46,7 +46,9 @@ export default function Home() {
       if (error) throw error;
       const { error: settingsError } = await supabase.from("pipeline_settings").insert({ channel_id: channel.id, videos_per_day: 2, trend_region: "ZA", trend_languages: ["en"], require_manual_approval: true, preferred_publish_hours: [12, 18] });
       if (settingsError) throw settingsError;
+      return channel.id as string;
     }
+    return existing.id as string;
   }, [channelName, supabase]);
 
   useEffect(() => {
