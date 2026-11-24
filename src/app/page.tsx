@@ -18,7 +18,11 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [trends, setTrends] = useState<Trend[]>([]);
   const [loadingTrends, setLoadingTrends] = useState(false);
-  const [channelName] = useState("My YouTube Channel");\n  const [channelId, setChannelId] = useState<string | null>(null);\n  const [projects, setProjects] = useState<Project[]>([]);\n  const [selectedProject, setSelectedProject] = useState<Project | null>(null);\n  const [savingScript, setSavingScript] = useState(false);
+  const [channelName] = useState("My YouTube Channel");
+  const [channelId, setChannelId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [savingScript, setSavingScript] = useState(false);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
@@ -142,7 +146,8 @@ export default function Home() {
     else { setMessage("Script saved. It remains unapproved."); await loadProjects(); }
     setSavingScript(false);
   }
-\n  async function signOut() { await supabase.auth.signOut(); setUserEmail(null); setTrends([]); setProjects([]); setChannelId(null); setSelectedProject(null); }
+
+  async function signOut() { await supabase.auth.signOut(); setUserEmail(null); setTrends([]); setProjects([]); setChannelId(null); setSelectedProject(null); }
 
   if (!sessionReady) return <main className="auth-shell"><div className="auth-card"><Sparkles/><h1>TrendPilot</h1><p>Loading your Shorts studio…</p></div></main>;
 
@@ -181,7 +186,8 @@ export default function Home() {
       <p className="editor-warning"><ShieldCheck size={15}/> This is a structure draft, not verified reporting. Add reliable sources and check every factual claim before approval.</p>
       <button className="primary-button" disabled={savingScript} onClick={saveScript}>{savingScript ? "Saving…" : "Save script draft"}</button>
     </section></div>}
-\n    <section className="next-steps"><div><Clock3 size={19}/><div><b>Next: research and script generation</b><p>Trend discovery is connected. The next build step adds fact-checking, scripts, review cards, and video rendering.</p></div></div><span className="setup-chip">IN PROGRESS</span></section>
+
+    <section className="next-steps"><div><Clock3 size={19}/><div><b>Next: research and script generation</b><p>Trend discovery is connected. The next build step adds fact-checking, scripts, review cards, and video rendering.</p></div></div><span className="setup-chip">IN PROGRESS</span></section>
     <footer className="studio-footer">TrendPilot <span>·</span> Africa/Johannesburg <span>·</span> Human approval stays on before publishing.</footer>
   </main>;
 }
