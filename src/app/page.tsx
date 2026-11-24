@@ -4,7 +4,8 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Activity, ArrowRight, Clock3, Film, LogOut, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Youtube } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };\ntype Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };
+type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };
+type Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };
 
 export default function Home() {
   const supabase = createClient();
