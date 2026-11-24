@@ -27,7 +27,9 @@ export default function Home() {
   const [researchResults, setResearchResults] = useState<ResearchSource[]>([]);
   const [researching, setResearching] = useState(false);
   const [savingSource, setSavingSource] = useState<string | null>(null);
-  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);\n  const [generatingScript, setGeneratingScript] = useState(false);\n  const [editorialChecks, setEditorialChecks] = useState<string[]>([]);
+  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);
+  const [generatingScript, setGeneratingScript] = useState(false);
+  const [editorialChecks, setEditorialChecks] = useState<string[]>([]);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
