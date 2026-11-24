@@ -4,7 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Activity, ArrowRight, Clock3, Film, LogOut, RefreshCw, ShieldCheck, Sparkles, TrendingUp, Youtube } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
-type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };
+type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };\ntype Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };
 
 export default function Home() {
   const supabase = createClient();
@@ -17,7 +17,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [trends, setTrends] = useState<Trend[]>([]);
   const [loadingTrends, setLoadingTrends] = useState(false);
-  const [channelName, setChannelName] = useState("My YouTube Channel");
+  const [channelName] = useState("My YouTube Channel");\n  const [channelId, setChannelId] = useState<string | null>(null);\n  const [projects, setProjects] = useState<Project[]>([]);\n  const [selectedProject, setSelectedProject] = useState<Project | null>(null);\n  const [savingScript, setSavingScript] = useState(false);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
@@ -33,7 +33,7 @@ export default function Home() {
     }
   }, []);
 
-  const ensureChannel = useCallback(async (userId: string) => {
+  const ensureChannel = useCallback(async (userId: string): Promise<string> => {
     const { data: existing, error: readError } = await supabase.from("channels").select("id,name").eq("owner_id", userId).limit(1).maybeSingle();
     if (readError) throw readError;
     if (!existing) {
@@ -51,7 +51,7 @@ export default function Home() {
       const user = data.session?.user;
       setUserEmail(user?.email ?? null);
       if (user) {
-        try { await ensureChannel(user.id); } catch (e) { setMessage(e instanceof Error ? e.message : "Could not initialise your channel."); }
+        try { const id = await ensureChannel(user.id); setChannelId(id); } catch (e) { setMessage(e instanceof Error ? e.message : "Could not initialise your channel."); }
       }
       setSessionReady(true);
     });
@@ -89,7 +89,59 @@ export default function Home() {
     } finally { setBusy(false); }
   }
 
-  async function signOut() { await supabase.auth.signOut(); setUserEmail(null); setTrends([]); }
+
+  const loadProjects = useCallback(async () => {
+    if (!channelId) return;
+    const { data, error } = await supabase.from("video_projects").select("id,title,hook,script,status,created_at").eq("channel_id", channelId).order("created_at", { ascending: false }).limit(20);
+    if (error) { setMessage(error.message); return; }
+    setProjects((data || []) as Project[]);
+  }, [channelId, supabase]);
+
+  useEffect(() => { if (channelId) void loadProjects(); }, [channelId, loadProjects]);
+
+  async function createDraft(trend: Trend) {
+    if (!channelId) return;
+    setBusy(true); setMessage("");
+    const title = trend.topic + " — what you need to know";
+    const hook = "Why is everyone talking about " + trend.topic + "?";
+    const script = [
+      "HOOK (0–4s)\n" + hook,
+      "CONTEXT (4–12s)\n" + trend.topic + " is appearing in South Africa's trending searches. Here's the context behind the search interest.",
+      "KEY POINTS (12–32s)\n[Add two or three verified facts from reliable reporting or primary sources. Do not treat search popularity as evidence.]",
+      "WHY IT MATTERS (32–40s)\n[Explain the practical impact in plain English, using sourced information.]",
+      "CLOSE (40–45s)\nFollow for clear, researched updates on the stories people are talking about."
+    ].join("\n\n");
+    try {
+      const { data, error } = await supabase.from("video_projects").insert({
+        channel_id: channelId, title, hook, script,
+        description: "A short explainer about " + trend.topic + ". Research and verify all claims before publishing.",
+        tags: ["trending", "South Africa", "Shorts"],
+        target_duration_seconds: 45, status: "idea", human_review_required: true
+      }).select("id,title,hook,script,status,created_at").single();
+      if (error) throw error;
+      if (trend.link) {
+        const { error: sourceError } = await supabase.from("research_sources").insert({
+          video_project_id: data.id, url: trend.link, title: "Google Trends — " + trend.topic,
+          publisher: "Google Trends", notes: "Trend discovery signal only; not evidence for factual claims. Find independent reporting and primary sources."
+        });
+        if (sourceError) throw sourceError;
+      }
+      setSelectedProject(data as Project);
+      await loadProjects();
+      setMessage("Draft created. Verify the facts and add reliable sources before approval.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not create draft."); }
+    finally { setBusy(false); }
+  }
+
+  async function saveScript() {
+    if (!selectedProject) return;
+    setSavingScript(true);
+    const { error } = await supabase.from("video_projects").update({ title: selectedProject.title, hook: selectedProject.hook, script: selectedProject.script, status: "script_draft" }).eq("id", selectedProject.id);
+    if (error) setMessage(error.message);
+    else { setMessage("Script saved. It remains unapproved."); await loadProjects(); }
+    setSavingScript(false);
+  }
+\n  async function signOut() { await supabase.auth.signOut(); setUserEmail(null); setTrends([]); setProjects([]); setChannelId(null); setSelectedProject(null); }
 
   if (!sessionReady) return <main className="auth-shell"><div className="auth-card"><Sparkles/><h1>TrendPilot</h1><p>Loading your Shorts studio…</p></div></main>;
 
@@ -114,9 +166,21 @@ export default function Home() {
     <section className="studio-stats"><div><span>Daily target</span><b>2 Shorts</b><small>Per channel</small></div><div><span>Trend region</span><b>South Africa</b><small>English topics</small></div><div><span>Publishing</span><b>Paused</b><small>Until channel OAuth is connected</small></div></section>
     <section className="feed-section"><div className="feed-heading"><div><span className="eyebrow">TREND RADAR · SOUTH AFRICA</span><h2>What’s gaining attention</h2><p>Current topics from Google Trends. Popularity is a discovery signal, not proof that a story is true.</p></div><button className="refresh-button" onClick={loadTrends} disabled={loadingTrends}><RefreshCw size={16} className={loadingTrends ? "spin" : ""}/> Refresh</button></div>
       {message && <p className="notice">{message}</p>}
-      {loadingTrends && trends.length === 0 ? <div className="empty-state">Loading live trend topics…</div> : trends.length ? <div className="trend-list">{trends.map((trend,i)=><article className="trend-card" key={trend.topic}><div className="trend-rank">{String(i+1).padStart(2,"0")}</div><div className="trend-info"><h3>{trend.topic}</h3><p><TrendingUp size={14}/> {trend.traffic || "Trending"} <span>·</span> {trend.source}</p></div>{trend.link ? <a href={trend.link} target="_blank" rel="noreferrer" className="trend-link">Explore <ArrowRight size={15}/></a> : <span className="trend-link muted">Live topic</span>}</article>)}</div> : <div className="empty-state">No topics were returned just now. Refresh to try again.</div>}
+      {loadingTrends && trends.length === 0 ? <div className="empty-state">Loading live trend topics…</div> : trends.length ? <div className="trend-list">{trends.map((trend,i)=><article className="trend-card" key={trend.topic}><div className="trend-rank">{String(i+1).padStart(2,"0")}</div><div className="trend-info"><h3>{trend.topic}</h3><p><TrendingUp size={14}/> {trend.traffic || "Trending"} <span>·</span> {trend.source}</p></div><button className="trend-link" disabled={busy} onClick={() => void createDraft(trend)}>Create draft <ArrowRight size={15}/></button></article>)}</div> : <div className="empty-state">No topics were returned just now. Refresh to try again.</div>}
     </section>
-    <section className="next-steps"><div><Clock3 size={19}/><div><b>Next: research and script generation</b><p>Trend discovery is connected. The next build step adds fact-checking, scripts, review cards, and video rendering.</p></div></div><span className="setup-chip">IN PROGRESS</span></section>
+
+    <section className="feed-section">
+      <div className="feed-heading"><div><span className="eyebrow">YOUR WORKSPACE</span><h2>Video drafts</h2><p>Saved to your private workspace. Drafts are never published automatically.</p></div><button className="refresh-button" onClick={loadProjects}>Refresh drafts</button></div>
+      {projects.length ? <div className="trend-list">{projects.map(project=><button key={project.id} className="project-row" onClick={()=>setSelectedProject(project)}><span className="project-status">{project.status}</span><span className="project-title">{project.title || "Untitled draft"}</span><span className="trend-link">Edit <ArrowRight size={15}/></span></button>)}</div> : <div className="empty-state">Your drafts will appear here when you create one from a trend.</div>}
+    </section>
+    {selectedProject && <div className="editor-backdrop"><section className="script-editor"><div className="editor-head"><div><span className="eyebrow">SCRIPT WORKSPACE</span><h2>Edit your Short</h2></div><button className="editor-close" onClick={()=>setSelectedProject(null)}>Close</button></div>
+      <label>Video title<input value={selectedProject.title || ""} onChange={e=>setSelectedProject({...selectedProject,title:e.target.value})}/></label>
+      <label>Opening hook<input value={selectedProject.hook || ""} onChange={e=>setSelectedProject({...selectedProject,hook:e.target.value})}/></label>
+      <label>Script draft<textarea rows={12} value={selectedProject.script || ""} onChange={e=>setSelectedProject({...selectedProject,script:e.target.value})}/></label>
+      <p className="editor-warning"><ShieldCheck size={15}/> This is a structure draft, not verified reporting. Add reliable sources and check every factual claim before approval.</p>
+      <button className="primary-button" disabled={savingScript} onClick={saveScript}>{savingScript ? "Saving…" : "Save script draft"}</button>
+    </section></div>}
+\n    <section className="next-steps"><div><Clock3 size={19}/><div><b>Next: research and script generation</b><p>Trend discovery is connected. The next build step adds fact-checking, scripts, review cards, and video rendering.</p></div></div><span className="setup-chip">IN PROGRESS</span></section>
     <footer className="studio-footer">TrendPilot <span>·</span> Africa/Johannesburg <span>·</span> Human approval stays on before publishing.</footer>
   </main>;
 }
