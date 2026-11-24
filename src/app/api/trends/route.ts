@@ -16,7 +16,7 @@ export async function GET() {
     });
     if (!response.ok) throw new Error("Google Trends returned HTTP " + response.status);
     const xml = await response.text();
-    const items = [...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].map(match => match[1]);
+    const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map(match => match[1]);
     const trends = items.slice(0, 20).map(item => ({
       topic: value(item, "title"),
       traffic: value(item, "approx_traffic"),
