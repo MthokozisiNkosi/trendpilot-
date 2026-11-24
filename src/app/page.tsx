@@ -23,7 +23,11 @@ export default function Home() {
   const [channelId, setChannelId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [savingScript, setSavingScript] = useState(false);\n  const [researchResults, setResearchResults] = useState<ResearchSource[]>([]);\n  const [researching, setResearching] = useState(false);\n  const [savingSource, setSavingSource] = useState<string | null>(null);\n  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);
+  const [savingScript, setSavingScript] = useState(false);
+  const [researchResults, setResearchResults] = useState<ResearchSource[]>([]);
+  const [researching, setResearching] = useState(false);
+  const [savingSource, setSavingSource] = useState<string | null>(null);
+  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
