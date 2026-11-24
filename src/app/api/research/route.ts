@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 function decode(value: string) {
   return value
-    .replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, "$1")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
@@ -13,7 +13,7 @@ function decode(value: string) {
 }
 
 function tag(xml: string, name: string) {
-  const match = xml.match(new RegExp("<(?:[\\w-]+:)?" + name + "(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[\\w-]+:)?" + name + ">", "i"));
+  const match = xml.match(new RegExp("<" + name + "(?:\\s[^>]*)?>([\\s\\S]*?)</" + name + ">", "i"));
   return match ? decode(match[1]) : "";
 }
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     });
     if (!response.ok) throw new Error("News search returned HTTP " + response.status);
     const xml = await response.text();
-    const items = [...xml.matchAll(/<item>([\\s\\S]*?)<\\/item>/gi)].map(match => match[1]);
+    const items = xml.split("<item>").slice(1).map(part => part.split("</item>")[0]);
     const sources = items.slice(0, 10).map(item => ({
       title: tag(item, "title"),
       url: tag(item, "link"),
