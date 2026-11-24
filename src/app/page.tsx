@@ -5,7 +5,7 @@ import { Activity, ArrowRight, Clock3, Film, LogOut, RefreshCw, ShieldCheck, Spa
 import { createClient } from "@/lib/supabase";
 
 type Trend = { topic: string; traffic: string; publishedAt: string | null; link: string | null; source: string };
-type Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };
+type Project = { id: string; title: string | null; hook: string | null; script: string | null; status: string; created_at: string };\ntype ResearchSource = { title: string; url: string; publisher: string; publishedAt: string | null; summary: string };
 
 export default function Home() {
   const supabase = createClient();
@@ -22,7 +22,7 @@ export default function Home() {
   const [channelId, setChannelId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [savingScript, setSavingScript] = useState(false);
+  const [savingScript, setSavingScript] = useState(false);\n  const [researchResults, setResearchResults] = useState<ResearchSource[]>([]);\n  const [researching, setResearching] = useState(false);\n  const [savingSource, setSavingSource] = useState<string | null>(null);\n  const [savedSourceUrls, setSavedSourceUrls] = useState<string[]>([]);
 
   const loadTrends = useCallback(async () => {
     setLoadingTrends(true);
@@ -138,6 +138,39 @@ export default function Home() {
       setMessage("Draft created. Verify the facts and add reliable sources before approval.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Could not create draft."); }
     finally { setBusy(false); }
+  }
+
+  async function findResearch() {
+    if (!selectedProject) return;
+    setResearching(true); setResearchResults([]); setMessage("");
+    try {
+      const query = selectedProject.title || selectedProject.hook || "";
+      const response = await fetch("/api/research?q=" + encodeURIComponent(query), { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not search reporting.");
+      setResearchResults(data.sources || []);
+      if (!data.sources?.length) setMessage("No matching reporting found. Try a more specific title.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Research search failed.");
+    } finally { setResearching(false); }
+  }
+
+  async function saveResearchSource(source: ResearchSource) {
+    if (!selectedProject) return;
+    setSavingSource(source.url);
+    const { error } = await supabase.from("research_sources").insert({
+      video_project_id: selectedProject.id,
+      url: source.url,
+      title: source.title,
+      publisher: source.publisher,
+      notes: "Discovered via Google News. Open and assess the original article; independently verify every factual claim before using it."
+    });
+    if (error) setMessage(error.message);
+    else {
+      setSavedSourceUrls(current => [...current, source.url]);
+      setMessage("Source saved to this draft. Read it and verify its claims before use.");
+    }
+    setSavingSource(null);
   }
 
   async function saveScript() {
